@@ -7,6 +7,7 @@
 // <bitbar.desc>git worktrees and live dev ports</bitbar.desc>
 // <bitbar.dependencies>node,git,lsof</bitbar.dependencies>
 // <bitbar.abouturl>https://github.com/munolee/swiftbar-worktrees</bitbar.abouturl>
+// <swiftbar.environment>[WORKTREES_ROOTS:~/projects, WORKTREES_EDITOR:Visual Studio Code, WORKTREES_TERMINAL:Terminal, WORKTREES_ICON:arrow.triangle.branch, WORKTREES_LANG:, WORKTREES_SLOT_BASE:3000, WORKTREES_SLOT_STEP:10]</swiftbar.environment>
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
