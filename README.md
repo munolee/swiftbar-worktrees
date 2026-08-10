@@ -38,6 +38,8 @@ Point SwiftBar at `~/SwiftBarPlugins` on first launch. The `30s` in the filename
 
 ## Configure
 
+The Settings submenu changes language, icon, editor, terminal and scan folders in place, listing only the editors and terminals actually installed. It writes to the file below, so both routes end up in the same place.
+
 Put a JSON file at `~/.config/swiftbar-worktrees.json`, using the lower case name of any variable below.
 
 ```json

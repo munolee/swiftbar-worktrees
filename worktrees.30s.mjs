@@ -44,6 +44,7 @@ const SLOT_STEP = Number(env('SLOT_STEP', '10'));
 const HERE = dirname(realpathSync(process.argv[1]));
 const REMOVE = join(HERE, 'worktree-remove.sh');
 const START = join(HERE, 'dev-start.sh');
+const SET = join(HERE, 'config-set.mjs');
 const DEV_SCRIPTS = env('DEV_SCRIPTS', 'dev,start,serve').split(',');
 
 const run = (cmd, args) => {
@@ -75,6 +76,14 @@ const TEXT = {
     copy: '경로 복사',
     remove: '워크트리 지우기',
     refresh: '새로고침',
+    settings: '설정',
+    language: '언어',
+    system: '시스템 따름',
+    icon: '아이콘',
+    editorLabel: '에디터 앱',
+    terminalLabel: '터미널 앱',
+    rootsLabel: '찾을 폴더',
+    openConfig: '설정 파일 열기',
   },
   en: {
     running: 'Open ports',
@@ -89,6 +98,14 @@ const TEXT = {
     copy: 'Copy path',
     remove: 'Remove worktree',
     refresh: 'Refresh',
+    settings: 'Settings',
+    language: 'Language',
+    system: 'Follow system',
+    icon: 'Icon',
+    editorLabel: 'Editor app',
+    terminalLabel: 'Terminal app',
+    rootsLabel: 'Scan folders',
+    openConfig: 'Open config file',
   },
 };
 const t = TEXT[LANG] ?? TEXT.en;
@@ -303,6 +320,61 @@ for (const [repo, trees] of [...byRepo].sort((a, b) => b[1].length - a[1].length
     }
   }
 }
+
+const EDITOR_APPS = [
+  'Cursor',
+  'Visual Studio Code',
+  'Zed',
+  'Sublime Text',
+  'WebStorm',
+  'IntelliJ IDEA',
+  'Nova',
+  'Xcode',
+];
+const TERMINAL_APPS = ['Terminal', 'iTerm', 'Warp', 'Ghostty', 'Alacritty', 'kitty', 'WezTerm'];
+const ICONS = [
+  'arrow.triangle.branch',
+  'square.stack.3d.up',
+  'rectangle.3.group',
+  'folder.badge.gearshape',
+  'externaldrive.connected.to.line.below',
+];
+
+const installed = (names) =>
+  names.filter((name) =>
+    ['/Applications', join(homedir(), 'Applications')].some((dir) =>
+      existsSync(join(dir, `${name}.app`)),
+    ),
+  );
+
+const choice = (label, key, value, current) =>
+  `---- ${label} | ${shell(SET, key, value)} refresh=true${current ? ' checked=true' : ''}`;
+
+console.log('---');
+console.log(t.settings);
+
+console.log(`-- ${t.language}`);
+console.log(choice(t.system, 'lang', '', config.lang === undefined));
+console.log(choice('한국어', 'lang', 'ko', config.lang === 'ko'));
+console.log(choice('English', 'lang', 'en', config.lang === 'en'));
+
+console.log(`-- ${t.editorLabel}`);
+for (const app of installed(EDITOR_APPS)) {
+  console.log(choice(app, 'editor', app, EDITOR.toLowerCase() === app.toLowerCase()));
+}
+
+console.log(`-- ${t.terminalLabel}`);
+for (const app of installed(TERMINAL_APPS)) {
+  console.log(choice(app, 'terminal', app, TERMINAL.toLowerCase() === app.toLowerCase()));
+}
+
+console.log(`-- ${t.icon}`);
+for (const name of ICONS) {
+  console.log(`${choice(name, 'icon', name, ICON === name)} sfimage=${name}`);
+}
+
+console.log(`-- ${t.rootsLabel}: ${ROOTS.join(' ')} | ${shell(SET, 'roots', '--ask')} refresh=true`);
+console.log(`-- ${t.openConfig} | ${shell('/usr/bin/open', '-t', CONFIG_PATH)}`);
 
 console.log('---');
 console.log(`${t.refresh} | refresh=true`);
