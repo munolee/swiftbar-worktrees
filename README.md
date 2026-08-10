@@ -47,6 +47,9 @@ Everything is an environment variable, all optional.
 | `WORKTREES_ICON` | `arrow.triangle.branch` | SF Symbol shown in the menu bar |
 | `WORKTREES_SLOT_BASE` | `3000` | First port of the slot scheme, see below |
 | `WORKTREES_SLOT_STEP` | `10` | Ports per slot |
+| `WORKTREES_LANG` | system locale | `en` or `ko` |
+
+Menu labels follow the macOS system language and fall back to English. Set `WORKTREES_LANG` to pin one.
 
 SwiftBar reads variables from its own environment, so set them in SwiftBar's plugin settings rather than your shell profile.
 

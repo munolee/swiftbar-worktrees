@@ -33,6 +33,44 @@ const run = (cmd, args) => {
   }
 };
 
+const LANG = env(
+  'LANG',
+  (run('defaults', ['read', '-g', 'AppleLocale']) || process.env.LANG || '').startsWith('ko')
+    ? 'ko'
+    : 'en',
+);
+
+const TEXT = {
+  ko: {
+    running: '실행중',
+    none: '없음',
+    stop: '내리기',
+    worktrees: '워크트리',
+    prune: (count) => `등록만 남은 것 ${count}개 정리`,
+    editor: '에디터',
+    terminal: '터미널',
+    finder: 'Finder',
+    copy: '경로 복사',
+    remove: '워크트리 지우기',
+    refresh: '새로고침',
+  },
+  en: {
+    running: 'Running',
+    none: 'none',
+    stop: 'Stop',
+    worktrees: 'Worktrees',
+    prune: (count) => `Prune ${count} stale`,
+    editor: 'Editor',
+    terminal: 'Terminal',
+    finder: 'Finder',
+    copy: 'Copy path',
+    remove: 'Remove worktree',
+    refresh: 'Refresh',
+  },
+};
+const t = TEXT[LANG] ?? TEXT.en;
+
+
 const repos = () =>
   ROOTS.flatMap((root) => {
     if (!existsSync(root)) return [];
@@ -158,21 +196,21 @@ console.log(
 );
 console.log('---');
 
-console.log('실행중');
+console.log(t.running);
 if (running.length === 0) {
-  console.log('-- 없음 | color=#888888');
+  console.log(`-- ${t.none} | color=#888888`);
 }
 for (const tree of running) {
   for (const { port, pid } of [...tree.ports].sort((a, b) => a.port - b.port)) {
     const where = tree.name === tree.repo ? tree.repo : `${tree.repo} / ${tree.name}`;
     console.log(`-- ${port}  ${where} | href=http://localhost:${port}`);
     console.log(`---- ${tree.branch} | color=#888888`);
-    console.log(`---- 내리기 (pid ${pid}) | bash=/bin/kill param1=${pid} terminal=false refresh=true`);
+    console.log(`---- ${t.stop} (pid ${pid}) | bash=/bin/kill param1=${pid} terminal=false refresh=true`);
   }
 }
 
 console.log('---');
-console.log('워크트리');
+console.log(t.worktrees);
 const byRepo = new Map();
 for (const tree of all) {
   byRepo.set(tree.repo, [...(byRepo.get(tree.repo) ?? []), tree]);
@@ -185,7 +223,7 @@ for (const [repo, trees] of [...byRepo].sort((a, b) => b[1].length - a[1].length
   console.log(`-- ${repo}${warn}  ${live}/${trees.length}`);
   if (dead > 0) {
     console.log(
-      `---- 등록만 남은 것 ${dead}개 정리 | ${shell('/usr/bin/git', '-C', repoPath.get(repo), 'worktree', 'prune')} refresh=true`,
+      `---- ${t.prune(dead)} | ${shell('/usr/bin/git', '-C', repoPath.get(repo), 'worktree', 'prune')} refresh=true`,
     );
     console.log('---- ---');
   }
@@ -197,18 +235,18 @@ for (const [repo, trees] of [...byRepo].sort((a, b) => b[1].length - a[1].length
     console.log(`---- ${dot} ${tree.name}${mark} | ${shell('/usr/bin/open', '-a', EDITOR, tree.path)}`);
     console.log(`------ ${tree.branch} | color=#888888`);
     console.log(`------ ${tree.when}${slot} | color=#888888`);
-    console.log('------ 에디터 | ' + shell('/usr/bin/open', '-a', EDITOR, tree.path));
-    console.log('------ 터미널 | ' + shell('/usr/bin/open', '-a', TERMINAL, tree.path));
-    console.log('------ Finder | ' + shell('/usr/bin/open', tree.path));
-    console.log('------ 경로 복사 | ' + copy(tree.path));
+    console.log(`------ ${t.editor} | ` + shell('/usr/bin/open', '-a', EDITOR, tree.path));
+    console.log(`------ ${t.terminal} | ` + shell('/usr/bin/open', '-a', TERMINAL, tree.path));
+    console.log(`------ ${t.finder} | ` + shell('/usr/bin/open', tree.path));
+    console.log(`------ ${t.copy} | ` + copy(tree.path));
     if (tree.name !== tree.repo) {
       console.log('------ ---');
       console.log(
-        `------ 워크트리 지우기 | ${shell(REMOVE, repoPath.get(tree.repo), tree.path)} refresh=true`,
+        `------ ${t.remove} | ${shell(REMOVE, repoPath.get(tree.repo), tree.path)} refresh=true`,
       );
     }
   }
 }
 
 console.log('---');
-console.log('새로고침 | refresh=true');
+console.log(`${t.refresh} | refresh=true`);
