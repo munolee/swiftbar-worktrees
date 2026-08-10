@@ -45,7 +45,7 @@ const LANG = env(
 
 const TEXT = {
   ko: {
-    running: '실행중',
+    running: '열린 포트',
     none: '없음',
     stop: '내리기',
     start: '띄우기',
@@ -59,7 +59,7 @@ const TEXT = {
     refresh: '새로고침',
   },
   en: {
-    running: 'Running',
+    running: 'Open ports',
     none: 'none',
     stop: 'Stop',
     start: 'Start',
