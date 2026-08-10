@@ -9,7 +9,8 @@
 // <bitbar.abouturl>https://github.com/munolee/swiftbar-worktrees</bitbar.abouturl>
 // <bitbar.github>munolee</bitbar.github>
 
-import { execFileSync } from 'node:child_process';
+import { execFileSync, execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { existsSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { homedir } from 'node:os';
@@ -75,6 +76,7 @@ const TEXT = {
     finder: 'Finder',
     copy: '경로 복사',
     remove: '워크트리 지우기',
+    dirty: '작업 중',
     refresh: '새로고침',
     settings: '설정',
     language: '언어',
@@ -97,6 +99,7 @@ const TEXT = {
     finder: 'Finder',
     copy: 'Copy path',
     remove: 'Remove worktree',
+    dirty: 'uncommitted',
     refresh: 'Refresh',
     settings: 'Settings',
     language: 'Language',
@@ -227,6 +230,22 @@ const all = found.flatMap((repo) => {
 });
 const byLength = [...all].sort((a, b) => b.path.length - a.path.length);
 
+const exec = promisify(execFile);
+await Promise.all(
+  all.map(async (tree) => {
+    try {
+      const { stdout } = await exec(
+        'git',
+        ['-C', tree.path, 'status', '--porcelain', '--untracked-files=no'],
+        { encoding: 'utf8' },
+      );
+      tree.dirty = stdout.trim() !== '';
+    } catch {
+      tree.dirty = false;
+    }
+  }),
+);
+
 for (const { pid, port } of listeners()) {
   const cwd = cwdOf(pid);
   if (!cwd) continue;
@@ -261,21 +280,21 @@ console.log(
 );
 console.log('---');
 
-console.log(t.running);
+console.log(`${t.running} | color=#888888`);
 if (running.length === 0) {
-  console.log(`-- ${t.none} | color=#888888`);
+  console.log(`${t.none} | color=#888888`);
 }
 for (const tree of running) {
   for (const { port, pid } of [...tree.ports].sort((a, b) => a.port - b.port)) {
     const where = tree.name === tree.repo ? tree.repo : `${tree.repo} / ${tree.name}`;
-    console.log(`-- ${port}  ${where} | href=http://localhost:${port}`);
-    console.log(`---- ${tree.branch} | color=#888888`);
-    console.log(`---- ${t.stop} (pid ${pid}) | bash=/bin/kill param1=${pid} terminal=false refresh=true`);
+    console.log(`${port}  ${where} | href=http://localhost:${port}`);
+    console.log(`-- ${tree.branch} | color=#888888`);
+    console.log(`-- ${t.stop} (pid ${pid}) | bash=/bin/kill param1=${pid} terminal=false refresh=true`);
   }
 }
 
 console.log('---');
-console.log(t.worktrees);
+console.log(`${t.worktrees} | color=#888888`);
 const byRepo = new Map();
 for (const tree of all) {
   byRepo.set(tree.repo, [...(byRepo.get(tree.repo) ?? []), tree]);
@@ -284,38 +303,43 @@ const repoPath = new Map(found.map((path) => [basename(path), path]));
 for (const [repo, trees] of [...byRepo].sort((a, b) => b[1].length - a[1].length)) {
   const live = trees.filter((tree) => tree.ports.length > 0).length;
   const warn = trees.some((tree) => clash.has(tree.path)) ? ' ⚠' : '';
+  const dirtyCount = trees.filter((tree) => tree.dirty).length;
   const dead = stale.get(repoPath.get(repo)) ?? 0;
-  console.log(`-- ${repo}${warn}  ${live}/${trees.length}`);
+  const marks = [`${live}/${trees.length}`, dirtyCount > 0 ? `✳︎${dirtyCount}` : ''].filter(Boolean);
+  console.log(`${repo}${warn}  ${marks.join('  ')}`);
   if (dead > 0) {
     console.log(
-      `---- ${t.prune(dead)} | ${shell('/usr/bin/git', '-C', repoPath.get(repo), 'worktree', 'prune')} refresh=true`,
+      `-- ${t.prune(dead)} | ${shell('/usr/bin/git', '-C', repoPath.get(repo), 'worktree', 'prune')} refresh=true`,
     );
-    console.log('---- ---');
+    console.log('-- ---');
   }
   for (const tree of trees) {
     const dot = tree.ports.length > 0 ? '●' : '○';
     const mark = clash.has(tree.path) ? ' ⚠' : '';
     const slot =
       tree.slot === undefined ? '' : `  slot ${tree.slot} (${SLOT_BASE + tree.slot * SLOT_STEP})`;
-    console.log(`---- ${dot} ${tree.name}${mark} | ${shell('/usr/bin/open', '-a', EDITOR, tree.path)}`);
-    console.log(`------ ${tree.branch} | color=#888888`);
-    console.log(`------ ${tree.when}${slot} | color=#888888`);
+    const dirty = tree.dirty ? ' ✳︎' : '';
+    console.log(
+      `-- ${dot} ${tree.name}${dirty}${mark} | ${shell('/usr/bin/open', '-a', EDITOR, tree.path)}`,
+    );
+    console.log(`---- ${tree.branch} | color=#888888`);
+    console.log(`---- ${tree.when}${slot}${tree.dirty ? `  ${t.dirty}` : ''} | color=#888888`);
     if (tree.dev) {
       for (const script of tree.dev.scripts) {
         console.log(
-          `------ ${t.start}: ${script} | bash=${START} param1=${tree.path} param2=${tree.dev.manager} param3=${script} terminal=true`,
+          `---- ${t.start}: ${script} | bash=${START} param1=${tree.path} param2=${tree.dev.manager} param3=${script} terminal=true`,
         );
       }
-      console.log('------ ---');
+      console.log('---- ---');
     }
-    console.log(`------ ${t.editor} | ` + shell('/usr/bin/open', '-a', EDITOR, tree.path));
-    console.log(`------ ${t.terminal} | ` + shell('/usr/bin/open', '-a', TERMINAL, tree.path));
-    console.log(`------ ${t.finder} | ` + shell('/usr/bin/open', tree.path));
-    console.log(`------ ${t.copy} | ` + copy(tree.path));
+    console.log(`---- ${t.editor} | ` + shell('/usr/bin/open', '-a', EDITOR, tree.path));
+    console.log(`---- ${t.terminal} | ` + shell('/usr/bin/open', '-a', TERMINAL, tree.path));
+    console.log(`---- ${t.finder} | ` + shell('/usr/bin/open', tree.path));
+    console.log(`---- ${t.copy} | ` + copy(tree.path));
     if (tree.name !== tree.repo) {
-      console.log('------ ---');
+      console.log('---- ---');
       console.log(
-        `------ ${t.remove} | ${shell(REMOVE, repoPath.get(tree.repo), tree.path)} refresh=true`,
+        `---- ${t.remove}${tree.dirty ? ` (${t.dirty})` : ''} | ${shell(REMOVE, repoPath.get(tree.repo), tree.path)} refresh=true`,
       );
     }
   }

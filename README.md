@@ -21,6 +21,7 @@ Git tells you which worktrees exist. `lsof` tells you which ports are open. Neit
 - Finds every repository under your project roots that has linked worktrees, and lists them grouped by repository.
 - Maps each listening TCP port to the worktree that owns it, by resolving the listening process's working directory.
 - Flags worktrees that claim the same dev port slot, so two checkouts never silently fight over a port.
+- Marks worktrees holding uncommitted work with `✳︎`, and counts them next to the repository, so you can see what is safe to remove before you remove it.
 - Opens a running port in the browser, or a worktree in your editor, with one click.
 - Starts a dev server in that worktree, reading the scripts straight out of its `package.json`.
 - Removes a worktree, or prunes stale registrations, from the menu.
