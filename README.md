@@ -15,7 +15,7 @@ Open ports
 Worktrees
   client        1/16  ✳︎6         → grouped by repository
   jira-kanban   0/21
-  sio           0/9
+  something     0/9
 ─────────────────────────────
 Settings
 Refresh
