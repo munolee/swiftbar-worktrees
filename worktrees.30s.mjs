@@ -7,16 +7,30 @@
 // <bitbar.desc>git worktrees and live dev ports</bitbar.desc>
 // <bitbar.dependencies>node,git,lsof</bitbar.dependencies>
 // <bitbar.abouturl>https://github.com/munolee/swiftbar-worktrees</bitbar.abouturl>
-// <swiftbar.environment>[WORKTREES_ROOTS:~/projects, WORKTREES_EDITOR:Visual Studio Code, WORKTREES_TERMINAL:Terminal, WORKTREES_ICON:arrow.triangle.branch, WORKTREES_LANG:, WORKTREES_SLOT_BASE:3000, WORKTREES_SLOT_STEP:10]</swiftbar.environment>
+// <bitbar.github>munolee</bitbar.github>
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { homedir } from 'node:os';
 
+const CONFIG_PATH = join(homedir(), '.config', 'swiftbar-worktrees.json');
+const config = (() => {
+  if (!existsSync(CONFIG_PATH)) return {};
+  try {
+    return JSON.parse(readFileSync(CONFIG_PATH, 'utf8'));
+  } catch {
+    return {};
+  }
+})();
+
+const usable = (value) => value !== undefined && String(value).trim() !== '';
+
 const env = (key, fallback) => {
-  const value = process.env[`WORKTREES_${key}`];
-  return value === undefined || value.trim() === '' ? fallback : value;
+  const fromEnv = process.env[`WORKTREES_${key}`];
+  if (usable(fromEnv)) return fromEnv;
+  const fromFile = config[key.toLowerCase()];
+  return usable(fromFile) ? String(fromFile) : fallback;
 };
 
 const ROOTS = env('ROOTS', join(homedir(), 'projects'))

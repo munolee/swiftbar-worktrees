@@ -38,7 +38,17 @@ Point SwiftBar at `~/SwiftBarPlugins` on first launch. The `30s` in the filename
 
 ## Configure
 
-Everything is an environment variable, all optional.
+Put a JSON file at `~/.config/swiftbar-worktrees.json`, using the lower case name of any variable below.
+
+```json
+{
+  "editor": "cursor",
+  "terminal": "iTerm",
+  "roots": "~/projects:~/work"
+}
+```
+
+Environment variables override the file, and both are optional.
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
@@ -53,7 +63,7 @@ Everything is an environment variable, all optional.
 
 Menu labels follow the macOS system language and fall back to English. Set `WORKTREES_LANG` to pin one.
 
-SwiftBar reads variables from its own environment, so set them in SwiftBar's plugin settings rather than your shell profile.
+SwiftBar launches plugins from the GUI session, so your shell profile is not read. Use the config file unless you export the variables into the login session yourself.
 
 ## Port slots
 
