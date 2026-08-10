@@ -22,6 +22,7 @@ Git tells you which worktrees exist. `lsof` tells you which ports are open. Neit
 - Maps each listening TCP port to the worktree that owns it, by resolving the listening process's working directory.
 - Flags worktrees that claim the same dev port slot, so two checkouts never silently fight over a port.
 - Opens a running port in the browser, or a worktree in your editor, with one click.
+- Starts a dev server in that worktree, reading the scripts straight out of its `package.json`.
 - Removes a worktree, or prunes stale registrations, from the menu.
 
 ## Install
@@ -48,6 +49,7 @@ Everything is an environment variable, all optional.
 | `WORKTREES_SLOT_BASE` | `3000` | First port of the slot scheme, see below |
 | `WORKTREES_SLOT_STEP` | `10` | Ports per slot |
 | `WORKTREES_LANG` | system locale | `en` or `ko` |
+| `WORKTREES_DEV_SCRIPTS` | `dev,start,serve` | Comma separated script names offered under Start |
 
 Menu labels follow the macOS system language and fall back to English. Set `WORKTREES_LANG` to pin one.
 
@@ -63,6 +65,12 @@ DEV_PORT_OFFSET=1   # gateway 3010, and so on
 ```
 
 If you do not use that convention the plugin simply omits the column.
+
+## Starting a dev server
+
+A worktree with a `package.json` gets a Start entry per matching script. Names listed in `WORKTREES_DEV_SCRIPTS` match exactly or with a `:` suffix, so `dev` and `dev:web` are offered while `dev-port` is not. The package manager comes from whichever lockfile is present.
+
+The command runs in a terminal window so you can watch it and stop it with `⌃C`. SwiftBar decides which terminal application that is.
 
 ## Removing worktrees
 

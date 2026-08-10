@@ -23,7 +23,10 @@ const TERMINAL = env('TERMINAL', 'Terminal');
 const ICON = env('ICON', 'arrow.triangle.branch');
 const SLOT_BASE = Number(env('SLOT_BASE', '3000'));
 const SLOT_STEP = Number(env('SLOT_STEP', '10'));
-const REMOVE = join(dirname(realpathSync(process.argv[1])), 'worktree-remove.sh');
+const HERE = dirname(realpathSync(process.argv[1]));
+const REMOVE = join(HERE, 'worktree-remove.sh');
+const START = join(HERE, 'dev-start.sh');
+const DEV_SCRIPTS = env('DEV_SCRIPTS', 'dev,start,serve').split(',');
 
 const run = (cmd, args) => {
   try {
@@ -45,6 +48,7 @@ const TEXT = {
     running: '실행중',
     none: '없음',
     stop: '내리기',
+    start: '띄우기',
     worktrees: '워크트리',
     prune: (count) => `등록만 남은 것 ${count}개 정리`,
     editor: '에디터',
@@ -58,6 +62,7 @@ const TEXT = {
     running: 'Running',
     none: 'none',
     stop: 'Stop',
+    start: 'Start',
     worktrees: 'Worktrees',
     prune: (count) => `Prune ${count} stale`,
     editor: 'Editor',
@@ -90,6 +95,30 @@ const slotOf = (path) => {
   return found ? Number(found[1]) : undefined;
 };
 
+const LOCKFILES = [
+  ['pnpm-lock.yaml', 'pnpm'],
+  ['yarn.lock', 'yarn'],
+  ['bun.lockb', 'bun'],
+  ['package-lock.json', 'npm'],
+];
+
+const devTasksOf = (path) => {
+  const manifest = join(path, 'package.json');
+  if (!existsSync(manifest)) return undefined;
+  let scripts;
+  try {
+    scripts = Object.keys(JSON.parse(readFileSync(manifest, 'utf8')).scripts ?? {});
+  } catch {
+    return undefined;
+  }
+  const named = scripts.filter((name) =>
+    DEV_SCRIPTS.some((want) => name === want || name.startsWith(`${want}:`)),
+  );
+  if (named.length === 0) return undefined;
+  const found = LOCKFILES.find(([file]) => existsSync(join(path, file)));
+  return { manager: found ? found[1] : 'npm', scripts: named };
+};
+
 const prunableOf = (repo) =>
   run('git', ['-C', repo, 'worktree', 'list', '--porcelain'])
     .split('\n\n')
@@ -109,6 +138,7 @@ const worktreesOf = (repo) =>
           branch: /^branch refs\/heads\/(.+)$/m.exec(block)?.[1] ?? '(detached)',
           head: /^HEAD (.+)$/m.exec(block)?.[1] ?? '',
           slot: slotOf(path),
+          dev: devTasksOf(path),
           ports: [],
         },
       ];
@@ -235,6 +265,14 @@ for (const [repo, trees] of [...byRepo].sort((a, b) => b[1].length - a[1].length
     console.log(`---- ${dot} ${tree.name}${mark} | ${shell('/usr/bin/open', '-a', EDITOR, tree.path)}`);
     console.log(`------ ${tree.branch} | color=#888888`);
     console.log(`------ ${tree.when}${slot} | color=#888888`);
+    if (tree.dev) {
+      for (const script of tree.dev.scripts) {
+        console.log(
+          `------ ${t.start}: ${script} | bash=${START} param1=${tree.path} param2=${tree.dev.manager} param3=${script} terminal=true`,
+        );
+      }
+      console.log('------ ---');
+    }
     console.log(`------ ${t.editor} | ` + shell('/usr/bin/open', '-a', EDITOR, tree.path));
     console.log(`------ ${t.terminal} | ` + shell('/usr/bin/open', '-a', TERMINAL, tree.path));
     console.log(`------ ${t.finder} | ` + shell('/usr/bin/open', tree.path));
