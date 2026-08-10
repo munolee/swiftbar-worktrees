@@ -14,7 +14,10 @@ import { existsSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { homedir } from 'node:os';
 
-const env = (key, fallback) => process.env[`WORKTREES_${key}`] ?? fallback;
+const env = (key, fallback) => {
+  const value = process.env[`WORKTREES_${key}`];
+  return value === undefined || value.trim() === '' ? fallback : value;
+};
 
 const ROOTS = env('ROOTS', join(homedir(), 'projects'))
   .split(':')
