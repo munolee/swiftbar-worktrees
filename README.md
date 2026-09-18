@@ -8,12 +8,14 @@ Git tells you which worktrees exist. `lsof` tells you which ports are open. Neit
 2/50
 ─────────────────────────────
 Open ports
-  3010  client                    → opens http://localhost:3010
+  3010  client                    opens http://localhost:3010
   3310  client
   4020  client
+Outside worktrees
+  5173  some-app                  a server under a scanned root
 ─────────────────────────────
 Worktrees
-  client        1/16  ✳︎6         → grouped by repository
+  client        1/16  ✳︎6         grouped by repository
   jira-kanban   0/21
   something     0/9
 ─────────────────────────────
@@ -27,6 +29,7 @@ Refresh
 
 - Finds every repository under your project roots that has linked worktrees, and lists them grouped by repository.
 - Maps each listening TCP port to the worktree that owns it, by resolving the listening process's working directory.
+- Lists servers running under a scanned root that no worktree claims under Outside worktrees, so a forgotten dev server is still one click from being stopped.
 - Marks worktrees holding uncommitted work with `✳︎`, so you can see what is safe to remove before you remove it.
 - Flags worktrees that claim the same dev port slot, so two checkouts never silently fight over a port.
 - Opens a running port in the browser, or a worktree in your editor, with one click.
@@ -40,10 +43,10 @@ Requires macOS, [SwiftBar](https://github.com/swiftbar/SwiftBar), node, git and 
 ```sh
 git clone https://github.com/munolee/swiftbar-worktrees.git
 mkdir -p ~/SwiftBarPlugins
-ln -s "$PWD/swiftbar-worktrees/worktrees.30s.mjs" ~/SwiftBarPlugins/worktrees.30s.mjs
+ln -s "$PWD/swiftbar-worktrees/worktrees.60s.mjs" ~/SwiftBarPlugins/worktrees.60s.mjs
 ```
 
-Point SwiftBar at `~/SwiftBarPlugins` on first launch. The `30s` in the filename is the refresh interval; rename it to change how often it runs.
+Point SwiftBar at `~/SwiftBarPlugins` on first launch. The `60s` in the filename is the refresh interval; rename it to change how often it runs.
 
 ## Settings
 
@@ -71,8 +74,13 @@ Environment variables override the file, and both are optional.
 | `WORKTREES_DEV_SCRIPTS` | `dev_scripts` | `dev,start,serve` | Script names offered under Start |
 | `WORKTREES_SLOT_BASE` | `slot_base` | `3000` | First port of the slot scheme, see below |
 | `WORKTREES_SLOT_STEP` | `slot_step` | `10` | Ports per slot |
+| `WORKTREES_COLLAPSE` | `collapse` | `5` | Quiet worktrees past this count move into a submenu |
 
 SwiftBar launches plugins from the GUI session, so your shell profile is never read. Use the menu or the config file unless you export variables into the login session yourself.
+
+## Long repositories
+
+A repository with dozens of worktrees would bury the menu. Worktrees running a server, holding uncommitted work, or being the main checkout stay in the open; the rest move into a `N more` submenu once there are more than `WORKTREES_COLLAPSE` of them.
 
 ## Port slots
 
@@ -95,11 +103,15 @@ The command runs in a terminal window so you can watch it and stop it with `⌃C
 
 The remove action runs `git worktree remove` **without** `--force`. Git refuses when the worktree has uncommitted changes or is locked, and the reason is shown in a dialog rather than swallowed. A confirmation dialog comes first, and the main checkout of a repository never gets the action at all.
 
+Servers running in that worktree are stopped first, since they would otherwise be left holding files under a path that is going away. The confirmation dialog names the pids before anything happens.
+
 Worktrees whose directory is already gone are cleaned with `git worktree prune` from the repository submenu.
 
 ## Performance
 
-Repositories are filtered by checking for a non-empty `.git/worktrees` directory before any git process runs, so hundreds of repositories cost one directory read each. Roughly three seconds on a machine with 50 worktrees and a busy process table, most of it spent resolving the working directory of every listening process. The uncommitted check runs in parallel and adds well under a second. The default 30 second refresh keeps all of that in the background.
+Repositories are filtered by checking for a non-empty `.git/worktrees` directory before any git process runs, so hundreds of repositories cost one directory read each. `git worktree list` runs once per repository and is read for both the worktrees and the stale count. Every listening process has its working directory resolved in a single `lsof` call rather than one call per pid. The uncommitted check runs in parallel and adds well under a second.
+
+Roughly a second and a half on a machine with 50 worktrees and a busy process table. The default 60 second refresh keeps all of that in the background.
 
 ## License
 
